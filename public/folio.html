@@ -361,7 +361,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
     .no-topics { font-size: 0.85rem; color: var(--muted); padding: 0.5rem 0; }
 
     /* ── Pinned ── */
-    .pin-btn.active { color: var(--accent); }
+    /* A pinned topic's pin button uses the shared `button.active` look (filled
+       accent + accent-fg icon), so it reads as "on" like the view-filter tabs. */
     .pinned-group .day-date { color: var(--accent); }
     .pinned-group .day-header { border-bottom-color: var(--accent); }
     .no-results { color: var(--muted); text-align: center; padding: 3rem 1rem; }
