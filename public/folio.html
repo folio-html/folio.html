@@ -717,7 +717,7 @@ function init(markdown) {
   render();
 }
 
-async function saveFile() {
+async function saveFile(retried) {
   const content = serialize();
   // Always keep a local-storage backup, regardless of how saving goes.
   localStorage.setItem(LS_CONTENT, content);
@@ -739,6 +739,15 @@ async function saveFile() {
           init(loaded.text);
         } else {
           remote.etag = null;   // drop the precondition → next save overwrites
+        }
+      } else if (e.status === 401) {
+        // Session expired mid-edit. The edits are safe — the local-storage backup
+        // above is written and the journal stays marked dirty. Offer a re-login
+        // and retry the save once; `retried` guards against a re-prompt loop.
+        if (!retried && await reauth()) {
+          await saveFile(true);
+        } else {
+          alert('Your session has expired — your changes are kept here. Reconnect (or recheck your password) and save again.');
         }
       } else {
         alert('Save failed: ' + e.message);
@@ -953,6 +962,16 @@ async function saveSettings() {
 async function logout() {
   await apiLogout();
   document.getElementById('dlg-settings').close();
+}
+
+// Session expired mid-save: ask for the password and re-establish the cookie
+// without disturbing the open journal. Returns true if login succeeded; the
+// edits are never touched here, so a false result just leaves them safely dirty.
+async function reauth() {
+  const pw = prompt('Your session has expired. Enter your password to keep saving (Cancel keeps your changes):');
+  if (!pw) return false;
+  try { await apiLogin(pw); return true; }
+  catch { return false; }
 }
 
 // ── Local Storage ──────────────────────────────────────────────────────────
