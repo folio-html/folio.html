@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Pin topics to the top of the list. A pinned topic is lifted into a dateless **Pinned** section above all days and stays there regardless of the Week/Month filter (text search still applies to it). Pinning is recorded in the journal markdown as a `<!-- folio:pinned -->` marker on the topic, so the file stays portable and the topic keeps its original place in the file. Use the pin button in a topic's toolbar to pin or unpin.
+
 ### Changed
 
 - API authentication now uses a password login with a session cookie instead of a bearer token kept in the browser. The Settings dialog has a **Password** field — exchanged for the cookie on save and never stored locally — and a **Log out** button. Requires a _folio.api_ backend that exposes `/v1/auth` (login/logout/session).
