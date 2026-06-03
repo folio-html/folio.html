@@ -585,11 +585,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
     <input type="url" id="set-api" placeholder="https://folio.example.com" autocomplete="off">
   </div>
   <div class="field">
-    <label>Token</label>
-    <input type="password" id="set-token" placeholder="Bearer token" autocomplete="off">
+    <label>Password</label>
+    <input type="password" id="set-password" placeholder="Login password" autocomplete="current-password">
   </div>
   <p style="font-size:0.78rem;color:var(--muted)">Leave the endpoint blank to use this site's own origin.</p>
   <div class="dialog-footer">
+    <button class="ghost" onclick="logout()" style="margin-right:auto">Log out</button>
     <button onclick="document.getElementById('dlg-settings').close()">Cancel</button>
     <button class="primary" onclick="saveSettings()">Save</button>
   </div>
@@ -621,7 +622,6 @@ const LS_CONTENT = 'folio_content';
 const LS_TS      = 'folio_ts';
 const LS_THEME   = 'folio_theme';
 const LS_API     = 'folio_api';     // runtime override for the API base URL
-const LS_TOKEN   = 'folio_token';   // bearer token for the API
 // Self-hosters can hardcode an API base here for zero-config; an empty value
 // falls back to the site's own origin (when served over http/https).
 const DEFAULT_API = '';
@@ -798,44 +798,71 @@ function apiBase() {
   return (localStorage.getItem(LS_API) || DEFAULT_API
     || (location.protocol.startsWith('http') ? location.origin : '')).replace(/\/$/, '');
 }
-function apiToken()      { return localStorage.getItem(LS_TOKEN) || ''; }
 function apiConfigured() { return !!apiBase(); }
 
-function apiHeaders(extra) {
-  const t = apiToken();
-  return { ...(t ? { Authorization: 'Bearer ' + t } : {}), ...extra };
+// Auth is a session cookie issued by /v1/auth/login. The cookie is HttpOnly, so
+// the client never sees or stores it — every request just needs `credentials` so
+// the browser attaches it (works same-origin, and cross-origin over HTTPS).
+function apiFetch(path, opts) {
+  return fetch(apiBase() + path, { credentials: 'include', ...opts });
 }
-function journalUrl(name) {
-  return apiBase() + '/v1/journals/' + encodeURIComponent(name);
+function journalPath(name) {
+  return '/v1/journals/' + encodeURIComponent(name);
+}
+// Tag fetch failures with the HTTP status so callers can tell "needs login" (401)
+// apart from a genuine error.
+function httpError(msg, status) { const e = new Error(msg); e.status = status; return e; }
+
+// Exchange the password for a session cookie. The password is never stored.
+async function apiLogin(password) {
+  const r = await apiFetch('/v1/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!r.ok) throw httpError('Login failed (' + r.status + ')', r.status);
+}
+
+async function apiLogout() {
+  try { await apiFetch('/v1/auth/logout', { method: 'POST' }); } catch { /* best effort */ }
+}
+
+// True while the current session cookie is still valid.
+async function apiHasSession() {
+  try { return (await apiFetch('/v1/auth/session')).ok; }
+  catch { return false; }
 }
 
 async function apiList() {
-  const r = await fetch(apiBase() + '/v1/journals', { headers: apiHeaders() });
-  if (!r.ok) throw new Error('List failed (' + r.status + ')');
+  const r = await apiFetch('/v1/journals');
+  if (!r.ok) throw httpError('List failed (' + r.status + ')', r.status);
   return r.json();   // [{ name, size, modified, etag }]
 }
 
 async function apiLoad(name) {
-  const r = await fetch(journalUrl(name), { headers: apiHeaders() });
+  const r = await apiFetch(journalPath(name));
   if (r.status === 404) return { text: '', etag: null };
-  if (!r.ok) throw new Error('Load failed (' + r.status + ')');
+  if (!r.ok) throw httpError('Load failed (' + r.status + ')', r.status);
   return { text: await r.text(), etag: r.headers.get('ETag') };
 }
 
 async function apiSave(name, content, etag) {
-  const r = await fetch(journalUrl(name), {
+  const r = await apiFetch(journalPath(name), {
     method: 'PUT',
-    headers: apiHeaders({ 'Content-Type': 'text/markdown', ...(etag ? { 'If-Match': etag } : {}) }),
+    headers: { 'Content-Type': 'text/markdown', ...(etag ? { 'If-Match': etag } : {}) },
     body: content,
   });
   if (r.status === 412) { const e = new Error('Conflict'); e.conflict = true; throw e; }
-  if (!r.ok) throw new Error('Save failed (' + r.status + ')');
+  if (!r.ok) throw httpError('Save failed (' + r.status + ')', r.status);
   return r.headers.get('ETag');
 }
 
 // Open the connect dialog (or settings, if no endpoint is configured yet).
 async function showConnect() {
   if (!apiConfigured()) { openSettings(); return; }
+  // No valid session cookie yet → go straight to Settings for the password,
+  // rather than flashing the journals dialog and bouncing back on a 401.
+  if (!await apiHasSession()) { openSettings(); return; }
   document.getElementById('dlg-journals').showModal();
   await refreshJournalList();
 }
@@ -856,6 +883,12 @@ async function refreshJournalList() {
       box.appendChild(b);
     }
   } catch (e) {
+    if (e.status === 401) {
+      // No session yet, or it expired — send them to Settings to (re-)enter the password.
+      document.getElementById('dlg-journals').close();
+      openSettings();
+      return;
+    }
     box.innerHTML = `<p class="muted">Could not reach the API: ${esc(e.message)}. Check Settings.</p>`;
   }
 }
@@ -891,18 +924,35 @@ function createRemoteJournal() {
 
 function openSettings() {
   document.getElementById('dlg-journals').close();
-  document.getElementById('set-api').value   = localStorage.getItem(LS_API) || '';
-  document.getElementById('set-token').value = localStorage.getItem(LS_TOKEN) || '';
+  document.getElementById('set-api').value      = localStorage.getItem(LS_API) || '';
+  document.getElementById('set-password').value = '';   // never prefilled — the password isn't stored
   document.getElementById('dlg-settings').showModal();
 }
 
-function saveSettings() {
-  const api   = document.getElementById('set-api').value.trim().replace(/\/$/, '');
-  const token = document.getElementById('set-token').value;
-  api   ? localStorage.setItem(LS_API, api)     : localStorage.removeItem(LS_API);
-  token ? localStorage.setItem(LS_TOKEN, token) : localStorage.removeItem(LS_TOKEN);
+async function saveSettings() {
+  const api      = document.getElementById('set-api').value.trim().replace(/\/$/, '');
+  const password = document.getElementById('set-password').value;
+  api ? localStorage.setItem(LS_API, api) : localStorage.removeItem(LS_API);
+
+  // A password, if entered, is exchanged for a session cookie and then discarded;
+  // it never touches localStorage. Leave it blank to reuse an existing session.
+  if (password) {
+    try {
+      await apiLogin(password);
+    } catch (e) {
+      alert('Login failed: ' + e.message);
+      return;   // keep the dialog open so the password can be corrected
+    }
+  }
+  document.getElementById('set-password').value = '';
   document.getElementById('dlg-settings').close();
   showConnect();
+}
+
+// Drop the session cookie. Next connect will ask for the password again.
+async function logout() {
+  await apiLogout();
+  document.getElementById('dlg-settings').close();
 }
 
 // ── Local Storage ──────────────────────────────────────────────────────────

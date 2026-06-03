@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- API authentication now uses a password login with a session cookie instead of a bearer token kept in the browser. The Settings dialog has a **Password** field — exchanged for the cookie on save and never stored locally — and a **Log out** button. Requires a _folio.api_ backend that exposes `/v1/auth` (login/logout/session).
+
 ## [1.3.0] - 2026-05-26
 
 ### Added
