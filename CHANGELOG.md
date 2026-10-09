@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-09
+
 ### Added
 
 - Pin topics to the top of the list. A pinned topic is lifted into a dateless **Pinned** section above all days and stays there regardless of the Week/Month filter (text search still applies to it). Pinning is recorded in the journal markdown as a `<!-- folio:pinned -->` marker on the topic, so the file stays portable and the topic keeps its original place in the file. Use the pin button in a topic's toolbar to pin or unpin.
@@ -81,7 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic local-storage backup with a restore prompt, plus an unsaved-changes warning before leaving the page.
 - Light and dark themes following the system preference.
 
-[Unreleased]: https://github.com/folio-html/folio.html/compare/1.3.0...HEAD
+[Unreleased]: https://github.com/folio-html/folio.html/compare/1.4.0...HEAD
+[1.4.0]: https://github.com/folio-html/folio.html/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/folio-html/folio.html/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/folio-html/folio.html/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/folio-html/folio.html/compare/1.1.0...1.2.0
