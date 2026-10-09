@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Creating a topic from a template now opens the new topic's editor. Previously, on a day that already had topics, the editor of the day's oldest topic opened instead.
+- Links in the rendered markdown now use the theme's accent colour. They previously fell back to the browser's default blue, which was hard to read in dark mode.
+- Clicking a link in the rendered markdown now opens it in a new tab without also opening the topic's editor. Previously it navigated away from the journal in the same tab (prompting about unsaved changes) and switched the topic into edit mode.
 
 ## [1.3.0] - 2026-05-26
 

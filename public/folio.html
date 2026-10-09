@@ -215,6 +215,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
     .topic-preview pre  { background: var(--surface); border-radius: var(--radius); padding: 0.75rem; overflow-x: auto; margin-bottom: 0.6rem; }
     .topic-preview pre code { background: none; padding: 0; }
     .topic-preview blockquote { border-left: 3px solid var(--border); padding-left: 0.75rem; color: var(--muted); }
+    /* Without this, links get the browser's default blue/purple, which is barely
+       legible on the dark background. The accent adapts to the theme. */
+    .topic-preview a { color: var(--accent); text-underline-offset: 2px; }
 
     /* ── Editor ── */
     .topic-editor { display: none; }
@@ -1256,7 +1259,8 @@ function makeTopic(date, topic, q) {
   titleEl.onclick = () => titleEl.closest('.topic').classList.toggle('collapsed');
 
   // ── Click preview → edit ──
-  preview.onclick = e => { if (e.target.tagName !== 'INPUT') openEditor(); };
+  // Checkboxes toggle in place and links open in a new tab — neither should open the editor.
+  preview.onclick = e => { if (e.target.tagName !== 'INPUT' && !e.target.closest('a')) openEditor(); };
 
   // ── Rename ──
   frag.querySelector('.rename-btn').onclick = () => {
@@ -1375,6 +1379,11 @@ function makeTopic(date, topic, q) {
 function renderPreview(el, content, q) {
   if (content) {
     el.innerHTML = marked.parse(content);
+    // Open links in a new tab so following one never navigates away from the journal.
+    el.querySelectorAll('a[href]:not([href^="#"])').forEach(a => {
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+    });
     el.classList.remove('placeholder');
     if (q) highlightDOM(el, q);
   } else {
