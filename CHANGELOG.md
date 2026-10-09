@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API authentication now uses a password login with a session cookie instead of a bearer token kept in the browser. The Settings dialog has a **Password** field — exchanged for the cookie on save and never stored locally — and a **Log out** button. Requires a _folio.api_ backend that exposes `/v1/auth` (login/logout/session).
 - If the session expires while editing a remote journal, saving now prompts for the password and retries automatically; the edits are kept (local-storage backup + still marked unsaved) whether or not you log back in, so nothing is lost.
 
+### Fixed
+
+- Creating a topic from a template now opens the new topic's editor. Previously, on a day that already had topics, the editor of the day's oldest topic opened instead.
+
 ## [1.3.0] - 2026-05-26
 
 ### Added

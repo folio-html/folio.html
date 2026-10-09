@@ -1610,10 +1610,10 @@ function confirmNewTopic() {
   document.getElementById('dlg-topic').close();
   render(document.getElementById('search').value);
   if (tplIdx >= 0) {
+    // The new topic was unshifted, so it renders first in its day.
     setTimeout(() => {
-      const dayEl    = document.querySelector(`[data-date="${pendingDate}"]`);
-      const topicEls = dayEl?.querySelectorAll('.topic');
-      topicEls?.[topicEls.length - 1]?.querySelector('.topic-preview')?.click();
+      const dayEl = document.querySelector(`[data-date="${pendingDate}"]`);
+      dayEl?.querySelector('.topic .topic-preview')?.click();
     }, 100);
   }
 }
