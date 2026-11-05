@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-05
+
+### Added
+
+- Tags: write `#hashtags` anywhere in a topic's text. They show as chips in the rendered markdown, and clicking one searches for it. Tags are plain text in the journal, so the file format is unchanged. Code and links are left alone.
+
 ## [1.5.0] - 2026-11-05
 
 ### Added
@@ -91,7 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic local-storage backup with a restore prompt, plus an unsaved-changes warning before leaving the page.
 - Light and dark themes following the system preference.
 
-[Unreleased]: https://github.com/folio-html/folio.html/compare/1.5.0...HEAD
+[Unreleased]: https://github.com/folio-html/folio.html/compare/1.6.0...HEAD
+[1.6.0]: https://github.com/folio-html/folio.html/compare/1.5.0...1.6.0
 [1.5.0]: https://github.com/folio-html/folio.html/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/folio-html/folio.html/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/folio-html/folio.html/compare/1.2.1...1.3.0

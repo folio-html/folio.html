@@ -22,6 +22,9 @@ More important stuff!
 
 The nice thing about this layout: I can edit it in any editor if needed. And I just add information on top.
 
+## Tags
+Write `#hashtags` anywhere in a topic's text. They stay plain text in the file, show up as chips in _folio.html_, and clicking one searches for it.
+
 ## Images
 Images are currently embedded via `Base64`. That is not ideal, but helps to keep the journal self-contained in every situation. With widespread adoption of the File System Access API, we might be able to select a folder and use that instead.
 

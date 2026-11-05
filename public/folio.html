@@ -1,5 +1,5 @@
 <!--folio.html - a simple journal frontend
-Version 1.5.0
+Version 1.6.0
 Copyright (C) 2026 Daniel Gilbert
 
 This program is free software: you can redistribute it and/or modify
@@ -218,6 +218,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
     /* Without this, links get the browser's default blue/purple, which is barely
        legible on the dark background. The accent adapts to the theme. */
     .topic-preview a { color: var(--accent); text-underline-offset: 2px; }
+    .topic-preview .tag {
+      padding: 0 0.45em; border-color: transparent; border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 16%, transparent);
+      color: var(--text); font: inherit; font-size: 0.85em; line-height: 1.5;
+    }
+    .topic-preview .tag:hover { border-color: var(--accent); }
 
     /* ── Editor ── */
     .topic-editor { display: none; }
@@ -644,7 +650,7 @@ let isDirty    = false;
 let pendingDate = null;
 let pendingTopic = null;
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const LS_CONTENT = 'folio_content';
 const LS_TS      = 'folio_ts';
 const LS_THEME   = 'folio_theme';
@@ -1276,8 +1282,13 @@ function makeTopic(date, topic, q) {
   titleEl.onclick = () => titleEl.closest('.topic').classList.toggle('collapsed');
 
   // ── Click preview → edit ──
-  // Checkboxes toggle in place and links open in a new tab — neither should open the editor.
-  preview.onclick = e => { if (e.target.tagName !== 'INPUT' && !e.target.closest('a')) openEditor(); };
+  // Checkboxes toggle in place, links open in a new tab and tags search — none of
+  // them should open the editor.
+  preview.onclick = e => {
+    const tag = e.target.closest('.tag');
+    if (tag) searchTag(tag.textContent);
+    else if (e.target.tagName !== 'INPUT' && !e.target.closest('a')) openEditor();
+  };
 
   // ── Rename ──
   frag.querySelector('.rename-btn').onclick = () => {
@@ -1405,6 +1416,7 @@ function renderPreview(el, content, q) {
       a.rel = 'noopener noreferrer';
     });
     el.classList.remove('placeholder');
+    linkTags(el);
     if (q) highlightDOM(el, q);
   } else {
     el.textContent = 'No content – click to edit';
@@ -1422,6 +1434,40 @@ function wireChecklists(previewEl, topic) {
       markDirty();
     });
   });
+}
+
+// Tags are plain inline #hashtags, so the file needs no extra syntax and search
+// already finds them; this only turns them into clickable chips in the preview.
+// The lookbehind keeps out C#-style suffixes, URL fragments and ## runs.
+const TAG_RE = /(?<![\p{L}\p{N}_\/#])#\p{L}[\p{L}\p{N}_]*(?:-[\p{L}\p{N}_]+)*/gu;
+
+function linkTags(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    if (node.parentElement.closest('a, code, pre')) return;
+    const text = node.textContent;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    for (const m of text.matchAll(TAG_RE)) {
+      const chip = document.createElement('button');
+      chip.className = 'tag';
+      chip.title = 'Search for this tag';
+      chip.textContent = m[0];
+      frag.append(text.slice(last, m.index), chip);
+      last = m.index + m[0].length;
+    }
+    if (!last) return;
+    frag.append(text.slice(last));
+    node.replaceWith(frag);
+  });
+}
+
+function searchTag(tag) {
+  document.getElementById('search').value = tag;
+  render(tag);
+  window.scrollTo(0, 0);
 }
 
 function highlightDOM(root, q) {
