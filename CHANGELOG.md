@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-05
+
+### Added
+
+- Move a topic to another date with the calendar button in its toolbar. The topic lands at the top of that day, which is created if needed; a day left without topics is removed. Pinned topics stay pinned.
+- Change the date of a whole day with the pencil button in the day's header. The day moves to its new place in the journal. If the new date already has an entry, you're asked before the two are merged.
+- Moves that would leave two topics with the same title on one day are refused until one is renamed.
+
 ## [1.4.0] - 2026-10-09
 
 ### Added
@@ -83,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic local-storage backup with a restore prompt, plus an unsaved-changes warning before leaving the page.
 - Light and dark themes following the system preference.
 
-[Unreleased]: https://github.com/folio-html/folio.html/compare/1.4.0...HEAD
+[Unreleased]: https://github.com/folio-html/folio.html/compare/1.5.0...HEAD
+[1.5.0]: https://github.com/folio-html/folio.html/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/folio-html/folio.html/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/folio-html/folio.html/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/folio-html/folio.html/compare/1.2.0...1.2.1

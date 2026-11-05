@@ -1,5 +1,5 @@
 <!--folio.html - a simple journal frontend
-Version 1.3.0
+Version 1.5.0
 Copyright (C) 2026 Daniel Gilbert
 
 This program is free software: you can redistribute it and/or modify
@@ -463,6 +463,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
       <span class="day-date"></span>
       <div class="day-actions">
         <button class="ghost add-topic-btn">+ Topic</button>
+        <button class="ghost edit-date-btn" title="Change date"><svg class="ic"><use href="#ic-pencil"/></svg></button>
         <button class="ghost danger delete-day-btn" title="Delete day"><svg class="ic"><use href="#ic-x"/></svg></button>
       </div>
     </div>
@@ -480,6 +481,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
         <button class="ghost pin-btn"       title="Pin to top"><svg class="ic"><use href="#ic-pin"/></svg></button>
         <button class="ghost move-up-btn"   title="Move up"><svg class="ic"><use href="#ic-arrow-up"/></svg></button>
         <button class="ghost move-down-btn" title="Move down"><svg class="ic"><use href="#ic-arrow-down"/></svg></button>
+        <button class="ghost move-date-btn" title="Move to another date"><svg class="ic"><use href="#ic-calendar"/></svg></button>
         <button class="ghost rename-btn"    title="Rename"><svg class="ic"><use href="#ic-pencil"/></svg></button>
         <button class="ghost danger delete-topic-btn" title="Delete"><svg class="ic"><use href="#ic-x"/></svg></button>
       </div>
@@ -521,6 +523,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
   <div class="dialog-footer">
     <button onclick="document.getElementById('dlg-day').close()">Cancel</button>
     <button class="primary" onclick="confirmNewDay()">Create</button>
+  </div>
+</dialog>
+
+<!-- Dialog: Change date -->
+<dialog id="dlg-date">
+  <h3 id="dlg-date-heading">Change Date</h3>
+  <div class="field">
+    <label>Date</label>
+    <input type="date" id="dlg-date-value">
+  </div>
+  <div class="dialog-footer">
+    <button onclick="document.getElementById('dlg-date').close()">Cancel</button>
+    <button class="primary" onclick="confirmChangeDate()">Change</button>
   </div>
 </dialog>
 
@@ -627,8 +642,9 @@ let fileHandle = null;   // FileSystemFileHandle (FSA API)
 let remote     = null;   // { name, etag } when the open journal lives on a folio.api endpoint
 let isDirty    = false;
 let pendingDate = null;
+let pendingTopic = null;
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const LS_CONTENT = 'folio_content';
 const LS_TS      = 'folio_ts';
 const LS_THEME   = 'folio_theme';
@@ -1207,6 +1223,7 @@ function makeDay(day, q) {
   dateEl.onclick = () => el.classList.toggle('collapsed');
 
   frag.querySelector('.add-topic-btn').onclick = () => showNewTopicDialog(day.date);
+  frag.querySelector('.edit-date-btn').onclick = () => showChangeDateDialog(day.date);
   frag.querySelector('.delete-day-btn').onclick = () => {
     if (!confirm(`Delete day "${day.date}" and all its topics?`)) return;
     journal = journal.filter(d => d.date !== day.date);
@@ -1319,6 +1336,9 @@ function makeTopic(date, topic, q) {
     [d.topics[i], d.topics[i + 1]] = [d.topics[i + 1], d.topics[i]];
     markDirty(); rerender();
   };
+
+  // ── Move to another date ──
+  frag.querySelector('.move-date-btn').onclick = () => showChangeDateDialog(date, topic.title);
 
   // ── Delete ──
   frag.querySelector('.delete-topic-btn').onclick = () => {
@@ -1490,9 +1510,7 @@ function toggleAll(sel) {
 function goToToday() {
   const date = today();
   if (!journal.some(d => d.date === date)) {
-    const i = journal.findIndex(d => d.date < date);
-    const entry = { date, topics: [] };
-    i < 0 ? journal.push(entry) : journal.splice(i, 0, entry);
+    insertDay({ date, topics: [] });
     markDirty(); render();
   }
   setTimeout(() => document.querySelector(`[data-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -1580,12 +1598,55 @@ function confirmNewDay() {
     document.querySelector(`[data-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
-  const i = journal.findIndex(d => d.date < date);
-  const entry = { date, topics: [] };
-  i < 0 ? journal.push(entry) : journal.splice(i, 0, entry);
+  insertDay({ date, topics: [] });
   markDirty();
   render();
   setTimeout(() => document.querySelector(`[data-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth' }), 50);
+}
+
+// The journal is kept newest-first; slot a day in at its place.
+function insertDay(day) {
+  const i = journal.findIndex(d => d.date < day.date);
+  i < 0 ? journal.push(day) : journal.splice(i, 0, day);
+}
+
+// Changes the date of a whole day, or of a single topic when a title is given.
+function showChangeDateDialog(date, topicTitle = null) {
+  pendingDate  = date;
+  pendingTopic = topicTitle;
+  document.getElementById('dlg-date-heading').textContent = topicTitle ? 'Move Topic' : 'Change Date';
+  document.getElementById('dlg-date-value').value = date;
+  document.getElementById('dlg-date').showModal();
+}
+function confirmChangeDate() {
+  const date = document.getElementById('dlg-date-value').value;
+  if (!date) return;
+  const day = journal.find(d => d.date === pendingDate);
+  if (!day || date === day.date) { document.getElementById('dlg-date').close(); return; }
+
+  const topics = pendingTopic ? day.topics.filter(t => t.title === pendingTopic) : day.topics;
+  const target = journal.find(d => d.date === date);
+  if (target) {
+    // Topics are addressed by title within a day, so a move must not create
+    // duplicates: delete would hit both, and edits only the first.
+    const clashes = topics.filter(t => target.topics.some(o => o.title === t.title));
+    if (clashes.length) {
+      alert(`${date} already has a topic with the same title:\n\n${clashes.map(t => t.title).join('\n')}\n\nRename it first.`);
+      return;
+    }
+    if (!pendingTopic && !confirm(`${date} already has an entry. Merge "${day.date}" into it?`)) return;
+  }
+
+  day.topics = day.topics.filter(t => !topics.includes(t));
+  if (!day.topics.length) journal = journal.filter(d => d !== day);
+  if (target) target.topics.unshift(...topics);
+  else insertDay({ date, topics });
+
+  document.getElementById('dlg-date').close();
+  markDirty();
+  rerender();
+  // A pinned topic stays in the Pinned group, so there's no day to jump to.
+  if (!pendingTopic || !topics[0].pinned) jumpToDate(date);
 }
 
 function showNewTopicDialog(date) {
@@ -1653,9 +1714,7 @@ function saveTemplates() {
 function quickEntry() {
   const date = today();
   if (!journal.some(d => d.date === date)) {
-    const i = journal.findIndex(d => d.date < date);
-    const entry = { date, topics: [] };
-    i < 0 ? journal.push(entry) : journal.splice(i, 0, entry);
+    insertDay({ date, topics: [] });
     markDirty(); render();
   }
   setTimeout(() => {
@@ -1679,6 +1738,9 @@ window.addEventListener('beforeunload', e => {
 // Dialog Enter-key confirm
 document.getElementById('dlg-day').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); confirmNewDay(); }
+});
+document.getElementById('dlg-date').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); confirmChangeDate(); }
 });
 document.getElementById('dlg-topic').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); confirmNewTopic(); }
